@@ -5,14 +5,14 @@ pipeline {
         maven 'Maven3'
     }
     stages {
-        stage('clean the workspace') {
+        stage('clean workspace') {
             steps {
                 cleanWs()
             }
         }
         stage('Checkout') {
             steps {
-                git brach 'main', credentialsId: 'github', url: https://github.com/Anuragsaroj/project_1_register-app.git'
+                git brach 'main', credentialsId: 'github', url: 'https://github.com/Anuragsaroj/project_1_register-app.git'
             }
         }
         stage('Build Appklication') {
@@ -20,14 +20,9 @@ pipeline {
                 sh 'mvn clean package'
             }
         }
-        stage('Tes Application') {
+        stage('Test Application') {
             steps {
                 sh 'mvn test'
-            }
-        }
-        stage('Deploy') {
-            steps {
-                sh 'mvn deploy'
             }
         }
     }
