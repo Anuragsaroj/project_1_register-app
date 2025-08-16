@@ -12,7 +12,7 @@ pipeline {
         }
         stage('Checkout') {
             steps {
-                git brach 'main', credentialsId: 'github', url: 'https://github.com/Anuragsaroj/project_1_register-app.git'
+                git branch 'main', credentialsId: 'github', url: 'https://github.com/Anuragsaroj/project_1_register-app.git'
             }
         }
         stage('Build Appklication') {
