@@ -11,9 +11,10 @@ pipeline {
         DOCKER_PASS = 'docker-hub'
         IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
         IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+	    JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
     stages {
-        stage('clean the workspace') {
+        stage('clean workspace') {
             steps {
                 cleanWs()
             }
@@ -27,12 +28,12 @@ pipeline {
                 )
             }
         }
-        stage('Build Appklication') {
+        stage('Build Application') {
             steps {
                 sh 'mvn clean package'
             }
         }
-        stage('Tes Application') {
+        stage('Test Application') {
             steps {
                 sh 'mvn test'
             }
@@ -50,18 +51,17 @@ pipeline {
         stage("Quality Gate"){
            steps {
                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'jenkin-sonarqube'
+                    waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
                 }	
             }
 
         }
-                stage("Build & Push Docker Image") {
+        stage("Build & Push Docker Image") {
             steps {
                 script {
                     docker.withRegistry('',DOCKER_PASS) {
                         docker_image = docker.build "${IMAGE_NAME}"
                     }
-
                     docker.withRegistry('',DOCKER_PASS) {
                         docker_image.push("${IMAGE_TAG}")
                         docker_image.push('latest')
@@ -70,6 +70,28 @@ pipeline {
             }
 
        }
-     
-    }
+     stage("Trivy Scan") {
+           steps {
+               script {
+	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image 9573491127/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+               }
+           }
+       }
+       stage ('Cleanup Artifacts') {
+           steps {
+               script {
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker rmi ${IMAGE_NAME}:latest"
+               }
+          }
+       }   
+        stage("Trigger CD Pipeline") {
+            steps {
+                script {
+                    sh "curl -v -k --user anurag:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${IMAGE_TAG}' 'ec2-13-211-67-135.ap-southeast-2.compute.amazonaws.com:8080/job/gitops-register-app /buildWithParameters?token=gitops-token'"
+                }
+            }
+       }
+    }  
+    
 }
